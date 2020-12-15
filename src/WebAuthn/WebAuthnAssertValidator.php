@@ -98,15 +98,16 @@ class WebAuthnAssertValidator
      * @param  \Psr\Http\Message\ServerRequestInterface  $request
      * @param  \Illuminate\Http\Request  $laravelRequest
      */
-    public function __construct(ConfigContract $config,
-                                CacheFactoryContract $cache,
-                                RelyingParty $relyingParty,
-                                AuthenticationExtensionsClientInputs $extensions,
-                                AuthenticatorAssertionResponseValidator $validator,
-                                PublicKeyCredentialLoader $loader,
-                                ServerRequestInterface $request,
-                                Request $laravelRequest)
-    {
+    public function __construct(
+        ConfigContract $config,
+        CacheFactoryContract $cache,
+        RelyingParty $relyingParty,
+        AuthenticationExtensionsClientInputs $extensions,
+        AuthenticatorAssertionResponseValidator $validator,
+        PublicKeyCredentialLoader $loader,
+        ServerRequestInterface $request,
+        Request $laravelRequest
+    ) {
         $this->cache = $cache->store($config->get('larapass.cache'));
         $this->relyingParty = $relyingParty;
         $this->extensions = $extensions;
@@ -147,6 +148,16 @@ class WebAuthnAssertValidator
     }
 
     /**
+     * Retrieves a previously stored userhandlefor a given request.
+     *
+     * @return \Webauthn\PublicKeyCredentialRequestOptions|null
+     */
+    public function retrieveUserHandle()
+    {
+        return $this->cache->get($this->cacheKey() . '|userHandle');
+    }
+
+    /**
      * Returns a challenge for the given request fingerprint.
      *
      * @param  \DarkGhostHunter\Larapass\Contracts\WebAuthnAuthenticatable|null  $user
@@ -155,8 +166,9 @@ class WebAuthnAssertValidator
     public function generateAssertion($user = null)
     {
         $assertion = $this->makeAssertionRequest($user);
-
+        $userHandle = $user ? $user->userHandle() : null;
         $this->cache->put($this->cacheKey(), $assertion, $this->timeout);
+        $this->cache->put($this->cacheKey() . '|userHandle', $userHandle, $this->timeout);
 
         return $assertion;
     }
@@ -198,15 +210,17 @@ class WebAuthnAssertValidator
      */
     public function validate(array $data)
     {
-        if (! $assertion = $this->retrieveAssertion()) {
+        if (!$assertion = $this->retrieveAssertion()) {
             return false;
+        } else {
+            $userHandle = $this->retrieveUserHandle();
         }
 
         try {
             $credentials = $this->loader->loadArray($data);
             $response = $credentials->getResponse();
 
-            if (! $response instanceof AuthenticatorAssertionResponse) {
+            if (!$response instanceof AuthenticatorAssertionResponse) {
                 return false;
             }
 
@@ -215,15 +229,14 @@ class WebAuthnAssertValidator
                 $response,
                 $this->retrieveAssertion(),
                 $this->request,
-                $response->getUserHandle(),
+                $userHandle,
                 [$this->getCurrentRpId($assertion)]
             );
-        }
-        catch (InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException $exception) {
             return false;
-        }
-        finally {
+        } finally {
             $this->cache->forget($this->cacheKey());
+            $this->cache->forget($this->cacheKey() . '|userHandle');
         }
     }
 

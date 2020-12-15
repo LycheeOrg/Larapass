@@ -85,14 +85,14 @@ class WebAuthnCredential extends Model implements PublicKeyCredentialSourceRepos
      * @var array
      */
     protected $fillable = [
-        'id',
+        'id',  // BaseUrl64::encode()
         'name',
         'type',
         'transports',
-        'attestation_type',
+        'attestation_type', // json_encode()
         'trust_path',
         'aaguid',
-        'public_key',
+        'public_key', // BaseUrl64::encode()
         'user_handle',
         'counter',
     ];
@@ -104,7 +104,7 @@ class WebAuthnCredential extends Model implements PublicKeyCredentialSourceRepos
      */
     public function isEnabled()
     {
-        return ! $this->disabled_at;
+        return !$this->disabled_at;
     }
 
     /**
@@ -114,7 +114,7 @@ class WebAuthnCredential extends Model implements PublicKeyCredentialSourceRepos
      */
     public function isDisabled()
     {
-        return ! $this->isEnabled();
+        return !$this->isEnabled();
     }
 
     /**

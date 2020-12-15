@@ -2,6 +2,7 @@
 
 namespace DarkGhostHunter\Larapass;
 
+use Base64Url\Base64Url;
 use Illuminate\Support\Str;
 use Webauthn\PublicKeyCredentialUserEntity as UserEntity;
 use DarkGhostHunter\Larapass\Eloquent\WebAuthnCredential;
@@ -26,9 +27,9 @@ trait WebAuthnAuthentication
      *
      * @return \Webauthn\PublicKeyCredentialUserEntity
      */
-    public function userEntity() : UserEntity
+    public function userEntity(): UserEntity
     {
-        return new UserEntity($this->email, $this->userHandle(), $this->name, $this->avatar);
+        return new UserEntity($this->username(), $this->userHandle(), $this->name(), $this->avatar);
     }
 
     /**
@@ -36,7 +37,7 @@ trait WebAuthnAuthentication
      *
      * @return string
      */
-    public function userHandle() : string
+    public function userHandle(): string
     {
         return $this->webAuthnCredentials()->withTrashed()->value('user_handle')
             ?? $this->generateUserHandle();
@@ -57,7 +58,7 @@ trait WebAuthnAuthentication
      *
      * @return array
      */
-    public function attestationExcludedCredentials() : array
+    public function attestationExcludedCredentials(): array
     {
         return $this->webAuthnCredentials()
             ->enabled()
@@ -73,9 +74,9 @@ trait WebAuthnAuthentication
      * @param  string  $id
      * @return bool
      */
-    public function hasCredential(string $id) : bool
+    public function hasCredential(string $id): bool
     {
-        return $this->webAuthnCredentials()->whereKey($id)->exists();
+        return $this->webAuthnCredentials()->whereKey(Base64Url::encode($id))->exists();
     }
 
     /**
@@ -84,11 +85,13 @@ trait WebAuthnAuthentication
      * @param  \Webauthn\PublicKeyCredentialSource  $source
      * @return void
      */
-    public function addCredential(CredentialSource $source) : void
+    public function addCredential(CredentialSource $source): void
     {
-        $this->webAuthnCredentials()->save(
-            WebAuthnCredential::fromCredentialSource($source)
-        );
+        /**
+         * @var WebAuthnCredential
+         */
+        $wa = WebAuthnCredential::fromCredentialSource($source);
+        $this->webAuthnCredentials()->save($wa);
     }
 
     /**
@@ -97,7 +100,7 @@ trait WebAuthnAuthentication
      * @param  string|array  $id
      * @return void
      */
-    public function removeCredential($id) : void
+    public function removeCredential($id): void
     {
         $this->webAuthnCredentials()->whereKey($id)->forceDelete();
     }
@@ -108,7 +111,7 @@ trait WebAuthnAuthentication
      * @param  string|array|null  $except
      * @return void
      */
-    public function flushCredentials($except = null) : void
+    public function flushCredentials($except = null): void
     {
         $this->webAuthnCredentials()->whereKeyNot($except)->forceDelete();
     }
@@ -119,7 +122,7 @@ trait WebAuthnAuthentication
      * @param  string  $id
      * @return mixed
      */
-    public function hasCredentialEnabled(string $id) : bool
+    public function hasCredentialEnabled(string $id): bool
     {
         return $this->webAuthnCredentials()->whereKey($id)->enabled()->exists();
     }
@@ -130,7 +133,7 @@ trait WebAuthnAuthentication
      * @param  string|array  $id
      * @return void
      */
-    public function enableCredential($id) : void
+    public function enableCredential($id): void
     {
         $this->webAuthnCredentials()->whereKey($id)->restore();
     }
@@ -141,7 +144,7 @@ trait WebAuthnAuthentication
      * @param  string|array  $id
      * @return void
      */
-    public function disableCredential($id) : void
+    public function disableCredential($id): void
     {
         $this->webAuthnCredentials()->whereKey($id)->delete();
     }
@@ -152,7 +155,7 @@ trait WebAuthnAuthentication
      * @param  string|array|null  $except
      * @return void
      */
-    public function disableAllCredentials($except = null) : void
+    public function disableAllCredentials($except = null): void
     {
         $this->webAuthnCredentials()->whereKeyNot($except)->delete();
     }
@@ -162,7 +165,7 @@ trait WebAuthnAuthentication
      *
      * @return array|\Webauthn\PublicKeyCredentialDescriptor[]
      */
-    public function allCredentialDescriptors() : array
+    public function allCredentialDescriptors(): array
     {
         return $this->webAuthnCredentials()
             ->enabled()
@@ -178,7 +181,7 @@ trait WebAuthnAuthentication
      * @param  string  $token
      * @return void
      */
-    public function sendCredentialRecoveryNotification(string $token) : void
+    public function sendCredentialRecoveryNotification(string $token): void
     {
         $this->notify(new Notifications\AccountRecoveryNotification($token));
     }
@@ -189,10 +192,10 @@ trait WebAuthnAuthentication
      * @param  string  $id
      * @return \DarkGhostHunter\Larapass\Contracts\WebAuthnAuthenticatable|null
      */
-    public static function getFromCredentialId(string $id) : ?WebAuthnAuthenticatable
+    public static function getFromCredentialId(string $id): ?WebAuthnAuthenticatable
     {
         return static::whereHas('webAuthnCredentials', static function ($query) use ($id) {
-            return $query->whereKey($id);
+            return $query->whereKey(Base64Url::encode($id));
         })->first();
     }
 
@@ -202,7 +205,7 @@ trait WebAuthnAuthentication
      * @param  string  $handle
      * @return \DarkGhostHunter\Larapass\Contracts\WebAuthnAuthenticatable|null
      */
-    public static function getFromCredentialUserHandle(string $handle) : ?WebAuthnAuthenticatable
+    public static function getFromCredentialUserHandle(string $handle): ?WebAuthnAuthenticatable
     {
         return static::whereHas('webAuthnCredentials', static function ($query) use ($handle) {
             return $query->where('user_handle', $handle);

@@ -33,7 +33,7 @@ trait WebAuthnRules
             'response.authenticatorData' => 'required|string',
             'response.clientDataJSON'    => 'required|string',
             'response.signature'         => 'required|string',
-            'response.userHandle'        => 'required|string',
+            // 'response.userHandle'        => 'sometimes|string|nullable',
             'type'                       => 'required|string',
         ];
     }
