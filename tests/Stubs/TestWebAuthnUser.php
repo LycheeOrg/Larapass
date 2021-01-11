@@ -13,16 +13,26 @@ use DarkGhostHunter\Larapass\Eloquent\WebAuthnCredential as WebAuthModel;
  */
 class TestWebAuthnUser extends User implements WebAuthnAuthenticatable
 {
-    use WebAuthnAuthentication,
-        Notifiable;
+	use WebAuthnAuthentication,
+		Notifiable;
 
-    protected $table = 'users';
+	protected $table = 'users';
 
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany|\DarkGhostHunter\Larapass\Eloquent\WebAuthnCredential
-     */
-    public function webAuthnCredentials()
-    {
-        return $this->hasMany(WebAuthModel::class, 'user_id');
-    }
+	/**
+	 * @return \Illuminate\Database\Eloquent\Relations\HasMany|\DarkGhostHunter\Larapass\Eloquent\WebAuthnCredential
+	 */
+	public function webAuthnCredentials()
+	{
+		return $this->hasMany(WebAuthModel::class, 'user_id');
+	}
+
+	public function username()
+	{
+		return 'username';
+	}
+
+	public function name()
+	{
+		return 'name';
+	}
 }
